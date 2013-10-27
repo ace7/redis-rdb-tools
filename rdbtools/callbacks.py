@@ -191,6 +191,87 @@ class JSONCallback(RdbCallback):
         self._out.write('}')
 
 
+class LineJsonCallback(RdbCallback):
+    def __init__(self, out):
+        self._out = out
+        self._elements_in_key = 0
+        self._element_index = 0
+
+    def start_rdb(self):
+        self._out.write('db\ttype\texp_time\tkey\tval\n\n')
+
+    def start_database(self, db_number):
+        self._db_number = db_number
+
+    def end_database(self, db_number):
+        pass
+
+    def end_rdb(self):
+        pass
+
+    def _start_key(self, key, length, expiry, tp, pre=''):
+        self._elements_in_key = length
+        self._element_index = 0
+        self._out.write('%d\t%s\t%s\t%s\t%s' % (self._db_number, tp,
+            self._getExpSec(expiry), encode_key(key), pre))
+
+    def _end_key(self, key, suffix=''):
+        self._out.write('%s\n' % suffix)
+
+    def _write_comma(self):
+        if self._element_index > 0 and self._element_index < self._elements_in_key :
+            self._out.write(',')
+        self._element_index = self._element_index + 1
+
+    def _getExpSec(self, expiry):
+        return expiry.strftime('%s') if expiry else '-1'
+
+    def set(self, key, value, expiry, info):
+        self._start_key(key, 0, expiry, 'str')
+        self._out.write('%s' % encode_value(value))
+        self._end_key(key)
+
+    def start_hash(self, key, length, expiry, info):
+        self._start_key(key, length, expiry, 'hash', '{')
+
+    def hset(self, key, field, value):
+        self._write_comma()
+        self._out.write('%s:%s' % (encode_key(field), encode_value(value)))
+
+    def end_hash(self, key):
+        self._end_key(key, '}')
+
+    def start_set(self, key, cardinality, expiry, info):
+        self._start_key(key, cardinality, expiry, 'set', '[')
+
+    def sadd(self, key, member):
+        self._write_comma()
+        self._out.write('%s' % encode_value(member))
+
+    def end_set(self, key):
+        self._end_key(key, ']')
+
+    def start_list(self, key, length, expiry, info):
+        self._start_key(key, length, expiry, 'list', '[')
+
+    def rpush(self, key, value) :
+        self._write_comma()
+        self._out.write('%s' % encode_value(value))
+
+    def end_list(self, key):
+        self._end_key(key, ']')
+
+    def start_sorted_set(self, key, length, expiry, info):
+        self._start_key(key, length, expiry, 'sset', '{')
+
+    def zadd(self, key, score, member):
+        self._write_comma()
+        self._out.write('%s:%s' % (encode_key(member), encode_value(score)))
+
+    def end_sorted_set(self, key):
+        self._end_key(key, '}')
+
+
 class DiffCallback(RdbCallback):
     '''Prints the contents of RDB in a format that is unix sort friendly, 
         so that two rdb files can be diffed easily'''

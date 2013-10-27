@@ -41,6 +41,16 @@ Only process hashes starting with "a", in database 2
 
     rdb --command json --db 2 --type hash --key "a.*" /var/redis/6379/dump.rdb
 
+## Converting dump files to Line Json ##
+Produce one line per record, each line contain full info about that record: key, value, type, ttl, etc...
+
+Usage:
+
+    rdb --command line /var/redis/6379/dump.rdb
+
+    rdb --command line --key "user.*" /var/redis/6379/dump.rdb
+
+    rdb --command line --db 2 --type hash --key "a.*" /var/redis/6379/dump.rdb
 
 ## Generate Memory Report ##
 
